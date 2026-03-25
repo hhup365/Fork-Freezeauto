@@ -5,35 +5,43 @@ on:
   workflow_dispatch:
 jobs:
   renew:
+    name: 🔄 执行续期任务
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30 # 多账号耗时较长，把总超时放宽到 30 分钟
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: 📥 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 🟢 安装 Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install
-      - run: npx playwright install chromium --with-deps
 
-      - name: 🛡️ 启动内部 GOST 代理转发
+      - name: 📦 安装依赖
+        run: npm install
+
+      - name: 🌐 安装 Playwright 浏览器
+        run: npx playwright install chromium --with-deps
+
+      - name: 🛡️ 启动 GOST 代理转发
         env:
           GOST_PROXY: ${{ secrets.GOST_PROXY }}
         run: |
           if [ -z "$GOST_PROXY" ]; then
-            echo "⚠️ 未配置 GOST_PROXY，使用直连 (极易被拦截)"
+            echo "⚠️ 未配置 GOST_PROXY，跳过代理启动"
           else
-            echo "🛡️ 检测到代理配置，正在启动 GOST 转发..."
-            wget -qO- https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz | gzip -d > gost
+            VERSION=$(curl -s https://api.github.com/repos/ginuerzh/gost/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
+            wget -q "https://github.com/ginuerzh/gost/releases/download/v${VERSION}/gost_${VERSION}_linux_amd64.tar.gz"
+            tar -xzf "gost_${VERSION}_linux_amd64.tar.gz"
             chmod +x gost
-            nohup ./gost -L http://:8080 -F "$GOST_PROXY" > /dev/null 2>&1 &
-            sleep 3
-            echo "✅ 代理转发已就绪"
+            nohup ./gost -L http://:8080 -F "$GOST_PROXY" > gost.log 2>&1 &
+            sleep 5
+            echo "✅ GOST 代理已启动"
           fi
 
-      - name: 🚀 运行续期脚本
+      - name: 🚀 运行多账号续期脚本
         env:
-          DISCORD_ACCOUNT: ${{ secrets.DISCORD_ACCOUNT }}
-          TG_BOT:          ${{ secrets.TG_BOT }}
-          DISCORD_2FA:     ${{ secrets.DISCORD_2FA }}
-          GOST_PROXY:      http://127.0.0.1:8080
+          DISCORD_ACCOUNTS: ${{ secrets.DISCORD_ACCOUNTS }} # 读取新的多账号变量
+          TG_BOT:           ${{ secrets.TG_BOT }}
+          GOST_PROXY:       http://127.0.0.1:8080
         run: npx playwright test tests/freeze.spec.js
