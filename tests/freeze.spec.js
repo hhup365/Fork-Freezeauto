@@ -18,6 +18,9 @@ async function sendTG(result) {
 }
 
 test('FreezeHost 自动续期', async () => {
+    // 🚀 核心修复：把默认的 30 秒超时延长到 2 分钟，防止网速慢导致强制掐断
+    test.setTimeout(120000); 
+
     let proxyConfig = process.env.GOST_PROXY ? { server: process.env.GOST_PROXY } : undefined;
     const browser = await chromium.launch({ headless: true, proxy: proxyConfig });
     const page = await browser.newPage();
@@ -58,12 +61,17 @@ test('FreezeHost 自动续期', async () => {
         if (!serverUrl) throw new Error('未找到控制台链接');
         await page.goto(serverUrl, { waitUntil: 'domcontentloaded' });
         
+        // 🚀 核心修复：先悬停父元素，等图标显现后再点击
         await page.waitForTimeout(3000);
-        await page.hover('i.fa-external-link-alt');
-        await page.click('i.fa-external-link-alt', { force: true });
+        console.log('🔍 查找续期图标...');
+        const parentEl = page.locator('i.fa-external-link-alt').first().locator('xpath=..');
+        await parentEl.waitFor({ state: 'visible', timeout: 15000 });
+        await parentEl.hover();
+        await page.waitForTimeout(1000); // 稍微等一下 CSS 动画显现
+        await page.locator('i.fa-external-link-alt').first().click({ force: true });
         
         const renewBtn = page.locator('#renew-link-modal');
-        await renewBtn.waitFor({ state: 'visible' });
+        await renewBtn.waitFor({ state: 'visible', timeout: 15000 });
         
         if (!(await renewBtn.innerText()).toLowerCase().includes('renew instance')) {
             console.log('⏰ 尚未到续期时间');
@@ -72,6 +80,7 @@ test('FreezeHost 自动续期', async () => {
         }
 
         const renewUrl = await renewBtn.getAttribute('href');
+        console.log('📤 提交续期请求...');
         await page.goto(new URL(renewUrl, page.url()).href, { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(5000);
 
