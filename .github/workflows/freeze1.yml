@@ -1,13 +1,13 @@
 name: 🎮 FreezeHost 自动续期
 on:
   schedule:
-    - cron: '20 1 * * *' # 每天 UTC 时间 1:20 (北京时间早上 9:20) 自动运行
+    - cron: '35 1 * * *' # 每天 UTC 时间 1:35 (北京时间早上 9:35) 自动运行
   workflow_dispatch:
 jobs:
   renew:
     name: 🔄 执行续期任务
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # 多账号耗时较长，把总超时放宽到 30 分钟
+    timeout-minutes: 30
     steps:
       - name: 📥 拉取代码
         uses: actions/checkout@v4
@@ -41,10 +41,9 @@ jobs:
 
       - name: 🚀 运行多账号续期脚本
         env:
-          DISCORD_ACCOUNTS: ${{ secrets.DISCORD_ACCOUNTS }} # 读取新的多账号变量
+          DISCORD_ACCOUNTS: ${{ secrets.DISCORD_ACCOUNTS }}
           TG_BOT:           ${{ secrets.TG_BOT }}
           GOST_PROXY:       http://127.0.0.1:8080
         run: npx playwright test tests/freeze.spec.js
 
-      # 👇 就是下面这行注释。它的唯一作用是让你能产生一次新的提交，踹醒 GitHub 的定时器
-      # fix: 强行刷新一次工作流，重新注册 cron 定时任务
+      # 强行刷新一次工作流，重新注册 cron 定时任务
