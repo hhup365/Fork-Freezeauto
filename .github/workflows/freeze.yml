@@ -1,8 +1,11 @@
 name: 🎮 FreezeHost 自动续期
 on:
+  push:                  # 新加的：只要一提交代码，立刻强制触发
+    branches:
+      - main
   schedule:
-    - cron: '45 2 * * *' # 改成 45 分钟
-  workflow_dispatch:
+    - cron: '10 2 * * *' # 改回你原本需要的每天 10:10
+  workflow_dispatch:     # 手动触发保留
   
 jobs:
   renew:
