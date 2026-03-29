@@ -7,7 +7,7 @@ const [TG_CHAT_ID, TG_TOKEN] = (process.env.TG_BOT || ',').split(',');
 
 const TIMEOUT = 120000;
 
-// 🛡️ 暴力清除广告
+// 🛡️ 暴力清除广告 (精准修复版)
 async function killAllAds(page) {
     try {
         await page.evaluate(() => {
@@ -17,8 +17,8 @@ async function killAllAds(page) {
                     iframe.remove();
                 }
             });
-            // 2. 💡 核心新增：直接粉碎 fc-dialog-overlay 这类阻挡点击的遮罩层
-            document.querySelectorAll('.fc-dialog-overlay, .fc-message-root, [class*="overlay"], [class*="backdrop"]').forEach(el => el.remove());
+            // 2. 💡 狙击修复：只杀 Google 的遮罩，绝不误删正常的网页弹窗容器！
+            document.querySelectorAll('.fc-dialog-overlay, .fc-message-root').forEach(el => el.remove());
         });
         
         const adCloseSelectors = ['button[aria-label="Close"]', '.close-button', 'div[class*="ad"] button[class*="close"]'];
@@ -32,7 +32,7 @@ async function killAllAds(page) {
     } catch { }
 }
 
-// 📨 发送 TG 消息 (直接发送拼装好的完整内容)
+// 📨 发送 TG 消息
 function sendTG(fullReport) {
     return new Promise((resolve) => {
         if (!TG_CHAT_ID || !TG_TOKEN) return resolve();
@@ -199,7 +199,6 @@ test('FreezeHost 多账号全自动续期', async () => {
                     if (clickedIcon) {
                         await page.waitForTimeout(3000);
                         
-                        // 弹窗出来后，再次执行物理清场
                         await killAllAds(page);
 
                         const renewBtn = page.locator('#renew-link-modal');
