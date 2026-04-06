@@ -110,6 +110,28 @@ test('FreezeHost 多账号全自动续期', async () => {
             await page.fill('input[name="password"]', password);
             await page.click('button[type="submit"]');
 
+            // =======================================================
+            // 🛡️ 新增逻辑：处理通行密钥 (Passkey) 的拦截
+            // =======================================================
+            await page.waitForTimeout(2500); // 等待可能出现的验证界面
+
+            // 1. 如果弹出了通行密钥提示框，尝试点击“取消”或“Cancel”
+            const cancelBtn = page.locator('button:has-text("Cancel"), button:has-text("取消")').first();
+            if (await cancelBtn.isVisible().catch(() => false)) {
+                console.log('🛡️ 拦截到通行密钥 (Passkey) 弹窗，正在取消...');
+                await cancelBtn.click();
+                await page.waitForTimeout(1500);
+            }
+
+            // 2. 取消后，如果是选择验证方式的页面，点击“使用身份验证器”
+            const authAppBtn = page.locator('button:has-text("Authenticator"), button:has-text("身份验证"), div:has-text("Authenticator App")').locator('visible=true').first();
+            if (await authAppBtn.isVisible().catch(() => false)) {
+                console.log('🛡️ 正在切换至 2FA 身份验证器页面...');
+                await authAppBtn.click();
+                await page.waitForTimeout(1500);
+            }
+            // =======================================================
+
             const twoFaInput = page.locator('input[autocomplete="one-time-code"], input[placeholder*="6"], input[maxlength="6"]');
             
             await twoFaInput.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
