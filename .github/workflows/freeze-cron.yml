@@ -1,14 +1,19 @@
 name: 🎮 FreezeHost 自动续期
+
 on:
   schedule:
-    - cron: '50 2 * * *' # 每天 UTC 时间 2:10 (北京时间早上 10:50) 自动运行
-  workflow_dispatch:     # 允许在网页上手动执行
-  
+    - cron: '0 3 */6 * *' # 每7天 UTC 时间 3 点 (北京时间早上 11 点)
+  workflow_dispatch:
+
+permissions:
+  contents: write   # ⭐ 必须允许 push time.txt
+
 jobs:
   renew:
     name: 🔄 执行续期任务
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # 多账号耗时较长，把总超时放宽到 30 分钟
+    timeout-minutes: 30 # 多账号耗时较长
+
     steps:
       - name: 📥 拉取代码
         uses: actions/checkout@v4
@@ -46,3 +51,16 @@ jobs:
           TG_BOT:           ${{ secrets.TG_BOT }}
           GOST_PROXY:       http://127.0.0.1:8080
         run: npx playwright test tests/freeze.spec.js
+
+      # ================= 新增 Step: time.txt =================
+      - name: 🕒 Keep Actions Alive (time.txt)
+        if: always()
+        run: |
+          echo "$(date '+%Y-%m-%d %H:%M:%S')" > time.txt
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add time.txt
+          git commit -m "chore: update time.txt to keep actions alive" || echo "No changes"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
