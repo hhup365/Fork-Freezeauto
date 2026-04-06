@@ -111,27 +111,28 @@ test('FreezeHost 多账号全自动续期', async () => {
             await page.click('button[type="submit"]');
 
             // =======================================================
-            // 🛡️ 新增逻辑：处理通行密钥 (Passkey) 的拦截
+            // 🛡️ 精准修复：模拟人工跳过通行密钥，选择 2FA 验证器
             // =======================================================
-            await page.waitForTimeout(2500); // 等待可能出现的验证界面
+            await page.waitForTimeout(3000); // 给 Discord 足够的时间加载下一个验证界面
 
-            // 1. 如果弹出了通行密钥提示框，尝试点击“取消”或“Cancel”
-            const cancelBtn = page.locator('button:has-text("Cancel"), button:has-text("取消")').first();
-            if (await cancelBtn.isVisible().catch(() => false)) {
-                console.log('🛡️ 拦截到通行密钥 (Passkey) 弹窗，正在取消...');
-                await cancelBtn.click();
-                await page.waitForTimeout(1500);
+            // 步骤 1：查找并点击“使用其他方式” (支持中英文)
+            const diffMethodBtn = page.locator('text=/(Use a different method|Use another method|Try another way|使用其他方式|选择其他方式|尝试其他验证方式)/i').first();
+            if (await diffMethodBtn.isVisible().catch(() => false)) {
+                console.log('🛡️ 触发了通行密钥拦截，正在点击“使用其他方式”...');
+                await diffMethodBtn.click();
+                await page.waitForTimeout(2000); // 等待选项列表弹出
             }
 
-            // 2. 取消后，如果是选择验证方式的页面，点击“使用身份验证器”
-            const authAppBtn = page.locator('button:has-text("Authenticator"), button:has-text("身份验证"), div:has-text("Authenticator App")').locator('visible=true').first();
-            if (await authAppBtn.isVisible().catch(() => false)) {
-                console.log('🛡️ 正在切换至 2FA 身份验证器页面...');
-                await authAppBtn.click();
-                await page.waitForTimeout(1500);
+            // 步骤 2：在列表中查找并点击“身份验证器” (支持中英文)
+            const authAppOption = page.locator('text=/(Authenticator App|身份验证器|Authentication App)/i').first();
+            if (await authAppOption.isVisible().catch(() => false)) {
+                console.log('🛡️ 正在列表中选择“身份验证器应用”...');
+                await authAppOption.click();
+                await page.waitForTimeout(2000); // 等待 6 位数输入框加载完成
             }
             // =======================================================
 
+            // 接下来走正常的 2FA 填写逻辑
             const twoFaInput = page.locator('input[autocomplete="one-time-code"], input[placeholder*="6"], input[maxlength="6"]');
             
             await twoFaInput.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
